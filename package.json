@@ -1,0 +1,52 @@
+{
+  "name": "@elizaos/plugin-claude-code",
+  "version": "0.1.0",
+  "description": "Use Claude Code CLI as a model provider in ElizaOS agents",
+  "author": "Ondrej Vostal <ondrej@vostal.net>",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kronael/eliza-plugin-claude-code"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@elizaos/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@elizaos/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "elizaos",
+    "plugin",
+    "claude",
+    "claude-code",
+    "model-provider",
+    "ai-agent"
+  ]
+}
