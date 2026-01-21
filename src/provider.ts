@@ -34,44 +34,46 @@ export class ClaudeCodeModelProvider {
       const truncated = prompt.slice(-MAX_PROMPT_LENGTH);
 
       // Create isolated temp workspace for this request
-      tempDir = await mkdtemp(join(tmpdir(), 'claude-code-'));
+      // Use TMPDIR environment variable if set, otherwise use OS tmpdir
+      const baseTmpDir = process.env.TMPDIR || tmpdir();
+      tempDir = await mkdtemp(join(baseTmpDir, 'claude-code-'));
       logger.debug(`[claude-code] Created temp workspace: ${tempDir}`);
 
       logger.debug(`[claude-code] Generating with model=${model}`);
       logger.debug(`[claude-code] Prompt preview: ${truncated.slice(0, 500)}...`);
 
-      proc = Bun.spawn(
-        [
-          'claude',
-          '-p',
-          truncated,
-          '--model',
-          model,
-        ],
-        {
-          cwd: tempDir,
-          stdout: 'pipe',
-          stderr: 'pipe',
-        }
-      );
+      proc = Bun.spawn(['claude', '-p', truncated, '--model', model], {
+        cwd: tempDir,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
 
-      timeoutId = setTimeout(() => {
-        if (proc) {
-          proc.kill();
-        }
-      }, this.timeout);
+      const timeout = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          try {
+            if (proc) {
+              proc.kill();
+            }
+          } catch {
+            // Process already exited
+          }
+          reject(new Error(`ClaudeCodeTimeout: exceeded ${this.timeout / 1000}s`));
+        }, this.timeout);
+      });
 
-      const [output, errors] = await Promise.all([
-        new Response(proc.stdout as ReadableStream).text(),
-        new Response(proc.stderr as ReadableStream).text(),
+      const [output, errors, exitCode] = await Promise.race([
+        Promise.all([
+          new Response(proc.stdout as ReadableStream).text(),
+          new Response(proc.stderr as ReadableStream).text(),
+          proc.exited,
+        ]),
+        timeout,
       ]);
 
       if (timeoutId) {
         clearTimeout(timeoutId);
         timeoutId = null;
       }
-
-      const exitCode = await proc.exited;
 
       if (exitCode !== 0) {
         const stderr = errors.trim();

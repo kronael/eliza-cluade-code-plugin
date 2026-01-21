@@ -27,7 +27,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@elizaos/core": "workspace:*"
+    "@elizaos/core": "workspace:*",
+    "@anthropic-ai/claude-code": "^0.2.61"
   },
   "peerDependencies": {
     "@elizaos/core": "workspace:*"
