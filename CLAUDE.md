@@ -22,12 +22,11 @@ ElizaOS plugin that integrates Claude Code CLI as a model provider. Each request
 - Wraps responses in `<response>` XML if not already present
 - Bun-specific: uses `Bun.spawn()` for process management
 
-**CRITICAL**: Spawned Claude Code instances run in restricted mode:
-- NO file system access (Read/Edit/Write disabled)
-- NO bash commands
-- NO web access (WebSearch/WebFetch disabled)
-- NO task spawning
-- Pure LLM text generation only
+**Note**: Spawned Claude Code instances run in an empty temp directory with
+`-p` (prompt) mode. No `--allowedTools` restriction is passed, so Claude Code
+retains its default tool access (web search, reasoning). However, with no
+local files in the temp dir, file/bash tools have nothing to work with.
+Effectively: LLM text generation + web search + chain-of-thought.
 
 **Key invariants**:
 - Temp workspace MUST be cleaned up (in `finally` block)

@@ -1,6 +1,6 @@
 {
   "name": "@elizaos/plugin-claude-code",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Use Claude Code CLI as a model provider in ElizaOS agents",
   "author": "Ondrej Vostal <ondrej@vostal.net>",
   "license": "MIT",
@@ -26,12 +26,8 @@
     "dev": "tsup --watch",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@elizaos/core": "workspace:*",
-    "@anthropic-ai/claude-code": "^0.2.61"
-  },
   "peerDependencies": {
-    "@elizaos/core": "workspace:*"
+    "@elizaos/core": ">=0.1.0"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
