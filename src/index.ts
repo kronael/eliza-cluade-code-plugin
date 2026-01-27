@@ -1,6 +1,7 @@
 import type { Plugin, IAgentRuntime } from '@elizaos/core';
 import { logger } from '@elizaos/core';
 import { ClaudeCodeModelProvider } from './provider';
+import { ClaudeCodeService } from './service';
 
 let providerInstance: ClaudeCodeModelProvider | null = null;
 
@@ -15,7 +16,7 @@ function getProvider(runtime: IAgentRuntime): ClaudeCodeModelProvider {
       timeout,
     });
 
-    logger.info(`[claude-code] Model provider initialized (timeout=${timeout}ms)`);
+    logger.info(`[claude-code] model provider initialized (timeout=${timeout}ms)`);
   }
 
   return providerInstance;
@@ -23,7 +24,9 @@ function getProvider(runtime: IAgentRuntime): ClaudeCodeModelProvider {
 
 export const claudeCodePlugin: Plugin = {
   name: 'plugin-claude-code',
-  description: 'Claude Code CLI integration as a model provider',
+  description: 'Claude Code CLI integration as a model provider with auth handling',
+
+  services: [ClaudeCodeService],
 
   models: {
     TEXT_LARGE: async (runtime, params) => {
@@ -52,3 +55,5 @@ export const claudeCodePlugin: Plugin = {
 export default claudeCodePlugin;
 
 export { ClaudeCodeModelProvider } from './provider';
+export { ClaudeCodeService } from './service';
+export * from './types';

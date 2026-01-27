@@ -1,7 +1,10 @@
 import { logger } from '@elizaos/core';
+import type { IAgentRuntime } from '@elizaos/core';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import type { ClaudeCodeService } from './service';
 
 const TIMEOUT = 120000; // 2 minutes
 const MAX_PROMPT_LENGTH = 50000;
@@ -12,7 +15,8 @@ interface ClaudeCodeOptions {
 
 /**
  * Model provider that uses Claude Code CLI to generate responses.
- * Each request gets an isolated temporary workspace that's automatically cleaned up.
+ * When ClaudeCodeService is available, delegates to it for unified auth handling.
+ * Otherwise falls back to direct CLI invocation.
  */
 export class ClaudeCodeModelProvider {
   private timeout: number;
@@ -22,9 +26,30 @@ export class ClaudeCodeModelProvider {
   }
 
   async generateText(
-    _runtime: unknown,
+    runtime: unknown,
     prompt: string,
     model: 'sonnet' | 'opus' | 'haiku' = 'sonnet'
+  ): Promise<string> {
+    // Try to use ClaudeCodeService if available (unified auth handling)
+    const typedRuntime = runtime as IAgentRuntime | undefined;
+    if (typedRuntime?.getService) {
+      const service = typedRuntime.getService<ClaudeCodeService>('claude_code');
+      if (service) {
+        logger.debug('[claude-code] using ClaudeCodeService for generation');
+        return service.generateText(prompt, model);
+      }
+    }
+
+    // Fallback to direct invocation (backward compat)
+    return this.invokeDirectly(prompt, model);
+  }
+
+  /**
+   * Direct CLI invocation (fallback when service not available)
+   */
+  private async invokeDirectly(
+    prompt: string,
+    model: 'sonnet' | 'opus' | 'haiku'
   ): Promise<string> {
     let tempDir: string | null = null;
     let proc: ReturnType<typeof Bun.spawn> | null = null;
@@ -34,13 +59,12 @@ export class ClaudeCodeModelProvider {
       const truncated = prompt.slice(-MAX_PROMPT_LENGTH);
 
       // Create isolated temp workspace for this request
-      // Use TMPDIR environment variable if set, otherwise use OS tmpdir
       const baseTmpDir = process.env.TMPDIR || tmpdir();
       tempDir = await mkdtemp(join(baseTmpDir, 'claude-code-'));
-      logger.debug(`[claude-code] Created temp workspace: ${tempDir}`);
+      logger.debug(`[claude-code] created temp workspace: ${tempDir}`);
 
-      logger.debug(`[claude-code] Generating with model=${model}`);
-      logger.debug(`[claude-code] Prompt preview: ${truncated.slice(0, 500)}...`);
+      logger.debug(`[claude-code] generating with model=${model}`);
+      logger.debug(`[claude-code] prompt preview: ${truncated.slice(0, 500)}...`);
 
       proc = Bun.spawn(['claude', '-p', truncated, '--model', model], {
         cwd: tempDir,
@@ -78,7 +102,7 @@ export class ClaudeCodeModelProvider {
       if (exitCode !== 0) {
         const stderr = errors.trim();
         const stdout = output.trim();
-        logger.error(`[claude-code] Failed (exit=${exitCode})`);
+        logger.error(`[claude-code] failed (exit=${exitCode})`);
         logger.error(`[claude-code] stderr: ${stderr}`);
         logger.error(`[claude-code] stdout: ${stdout}`);
         throw new Error(`ClaudeCodeError: ${stderr || stdout || 'Unknown error'}`);
@@ -88,21 +112,21 @@ export class ClaudeCodeModelProvider {
         throw new Error('EmptyOutput: Claude Code returned nothing');
       }
 
-      logger.debug(`[claude-code] Response (length=${output.length})`);
-      logger.debug(`[claude-code] Raw output preview: ${output.slice(0, 300)}...`);
+      logger.debug(`[claude-code] response (length=${output.length})`);
+      logger.debug(`[claude-code] raw output preview: ${output.slice(0, 300)}...`);
 
       const trimmed = output.trim();
 
       // If response doesn't start with <response>, wrap it
       if (!trimmed.startsWith('<response>')) {
-        logger.debug('[claude-code] Adding <response> wrapper');
+        logger.debug('[claude-code] adding <response> wrapper');
         return `<response>\n${trimmed}\n</response>`;
       }
 
       return trimmed;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      logger.error(`[claude-code] Generation failed: ${msg}`);
+      logger.error(`[claude-code] generation failed: ${msg}`);
       throw error;
     } finally {
       // Ensure timeout is cleared
@@ -123,9 +147,9 @@ export class ClaudeCodeModelProvider {
       if (tempDir) {
         try {
           await rm(tempDir, { recursive: true, force: true });
-          logger.debug(`[claude-code] Cleaned up temp workspace: ${tempDir}`);
+          logger.debug(`[claude-code] cleaned up temp workspace: ${tempDir}`);
         } catch (cleanupError) {
-          logger.warn(`[claude-code] Failed to cleanup ${tempDir}: ${cleanupError}`);
+          logger.warn(`[claude-code] failed to cleanup ${tempDir}: ${cleanupError}`);
         }
       }
     }
