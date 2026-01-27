@@ -19,10 +19,13 @@
     "url": "https://github.com/kronael/eliza-plugin-claude-code"
   },
     "scripts": {
-    "build": "bun build src/index.ts --outdir dist --format esm --external @elizaos/core --sourcemap=external && tsc --emitDeclarationOnly",
-    "dev": "bun build src/index.ts --outdir dist --format esm --external @elizaos/core --sourcemap=external --watch",
+    "build": "bun build src/index.ts --outdir dist --format esm --target bun --external @elizaos/core --sourcemap=external",
+    "build:types": "tsc --emitDeclarationOnly",
+    "build:all": "bun run build && bun run build:types",
+    "dev": "bun build src/index.ts --outdir dist --format esm --target bun --external @elizaos/core --sourcemap=external --watch",
     "clean": "rm -rf dist",
-    "prepare": "bun run build"
+    "prepare": "bun run build",
+    "test": "bun test"
   },
   "peerDependencies": {
     "@elizaos/core": ">=0.1.0"
