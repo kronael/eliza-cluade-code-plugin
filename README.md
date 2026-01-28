@@ -1,31 +1,28 @@
-# @elizaos/plugin-claude-code
+# eliza-plugin-claude-code
 
-Claude Code CLI integration as a model provider for ElizaOS agents.
+Claude Code CLI as a model provider for ElizaOS. Spawns isolated CLI processes
+with OAuth auth handling, timeout management, and temp workspace cleanup.
 
 ## Installation
 
 ```bash
-npm install github:kronael/eliza-plugin-claude-code
+bun add github:kronael/eliza-plugin-claude-code
 ```
 
-Prerequisites:
+Requires Claude Code CLI:
 ```bash
 npm install -g @anthropic-ai/claude-code
-claude --version  # Verify installation
+claude login  # OAuth authentication
 ```
 
 ## Usage
 
-Add to your character file:
+Add to character file:
 
 ```json
 {
   "plugins": ["eliza-plugin-claude-code"],
   "settings": {
-    "model": {
-      "TEXT_LARGE": "claude-code/sonnet",
-      "TEXT_SMALL": "claude-code/haiku"
-    },
     "claudeCode": {
       "largeModel": "sonnet",
       "smallModel": "haiku",
@@ -35,52 +32,91 @@ Add to your character file:
 }
 ```
 
-Model options: `sonnet`, `opus`, `haiku`
+Models: `sonnet` (default), `opus`, `haiku`
 
-## How It Works
+## Authentication
 
-1. ElizaOS sends prompt to ClaudeCodeModelProvider
-2. Provider creates isolated temporary workspace
-3. Spawns `claude` CLI with prompt + model flag
-4. Claude Code runs with tool access (web research, etc.)
-5. Response returned, temp workspace cleaned up
+Reads OAuth credentials from `~/.claude/.credentials.json`. On startup, service
+logs auth status and token expiry. Auth errors (expired token, unauthorized) are
+detected in CLI stderr and logged once per service lifetime.
 
-Each request is isolated. Claude Code does NOT have access to your actual codebase.
+If auth fails: `claude login`
 
-## ClaudeCodeService
+## ClaudeCodeService API
 
 Other plugins can use the service directly:
 
 ```typescript
+import type { ClaudeCodeService } from 'eliza-plugin-claude-code';
+
 const service = runtime.getService<ClaudeCodeService>('claude_code');
+```
 
-// Simple generation
-const text = await service.generateText(prompt, 'sonnet');
+### generateText(prompt, model?)
 
-// Full control
+Returns text wrapped in `<response>` tags. Throws on error or empty output.
+
+```typescript
+const text = await service.generateText('Explain monads', 'sonnet');
+```
+
+### invoke(options)
+
+Full control over CLI invocation. Returns `ClaudeInvokeResult`.
+
+```typescript
 const result = await service.invoke({
-  prompt,
+  prompt: 'Analyze this codebase',
   model: 'sonnet',
   timeout: 300000,
   cwd: '/path/to/project',
   allowedTools: ['Read', 'Glob', 'Grep'],
   disallowedTools: ['Edit', 'Write'],
 });
+
+// result: { output, exitCode, stderr, duration }
 ```
 
-## Available Tools
+### research(prompt, options)
 
-In temporary workspace:
-- `Read`, `Glob`, `Grep` - File operations
-- `Bash` - Shell commands (read-only)
-- `WebSearch`, `WebFetch` - Web research
-- `Task` - Sub-agents
+For codebase research with longer timeout (10min default).
 
-Disabled: `Edit`, `Write`, `NotebookEdit`
+```typescript
+const result = await service.research('Find all API endpoints', {
+  cwd: '/path/to/repo',
+  allowedTools: ['Read', 'Glob', 'Grep', 'Bash'],
+  timeout: 600000,
+});
+```
 
-## Performance
+### checkAuth()
 
-Response time: 5-15 seconds (vs 1-2s for API models). Best for questions requiring reasoning and web research.
+Returns current OAuth status.
+
+```typescript
+const status = await service.checkAuth();
+// { authenticated, expiresAt?, subscriptionType?, needsLogin, error? }
+```
+
+## Types
+
+```typescript
+interface ClaudeInvokeOptions {
+  prompt: string;
+  model?: 'sonnet' | 'opus' | 'haiku';
+  timeout?: number;
+  cwd?: string;
+  allowedTools?: string[] | string;
+  disallowedTools?: string[] | string;
+}
+
+interface ClaudeInvokeResult {
+  output: string;
+  exitCode: number;
+  stderr: string;
+  duration: number;
+}
+```
 
 ## License
 
