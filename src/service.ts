@@ -165,7 +165,7 @@ export class ClaudeCodeService extends Service {
         logger.debug(`[claude-code] created temp workspace: ${tempDir}`);
       }
 
-      logger.debug(`[claude-code] invoking model=${model} cwd=${workDir}`);
+      logger.info(`[claude-code] invoking model=${model} cwd=${workDir}`);
       logger.debug(`[claude-code] prompt preview: ${truncated.slice(0, 200)}...`);
 
       proc = Bun.spawn(args, {
@@ -216,7 +216,7 @@ export class ClaudeCodeService extends Service {
         logger.error(`[claude-code] exit=${exitCode}`);
         logger.error(`[claude-code] stderr: ${stderr.slice(0, 500)}`);
       } else {
-        logger.debug(`[claude-code] completed in ${duration}ms`);
+        logger.info(`[claude-code] completed in ${duration}ms`);
       }
 
       return {
