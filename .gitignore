@@ -190,3 +190,15 @@ standalone.ts
 .claude/cache/
 /thoughts
 cfg/hel1v5/*.env
+# Shell configs
+.bash_profile
+.bashrc
+.zshrc
+.zprofile
+.profile
+.gitconfig
+.ripgreprc
+
+# IDE
+.idea
+.vscode
