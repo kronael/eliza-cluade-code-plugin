@@ -299,6 +299,7 @@ export class ClaudeCodeService extends Service {
     prompt: string,
     options: {
       cwd: string;
+      model?: 'sonnet' | 'opus' | 'haiku';
       allowedTools?: string[] | string;
       disallowedTools?: string[] | string;
       timeout?: number;
@@ -306,7 +307,7 @@ export class ClaudeCodeService extends Service {
   ): Promise<ClaudeInvokeResult> {
     return this.invoke({
       prompt,
-      model: 'sonnet',
+      model: options.model || 'sonnet',
       timeout: options.timeout || 600000, // 10 min default for research
       cwd: options.cwd,
       allowedTools: options.allowedTools,
