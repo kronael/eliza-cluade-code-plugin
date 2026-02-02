@@ -283,13 +283,12 @@ export class ClaudeCodeService extends Service {
       throw new Error('EmptyOutput: Claude Code returned nothing');
     }
 
-    // Strip XML wrapper tags - consumers get clean text
-    let cleanOutput = result.output.trim()
-      .replace(/^\s*<response>\s*/i, '')
-      .replace(/\s*<\/response>\s*$/i, '')
-      .trim();
+    // If response doesn't start with <response>, wrap it
+    if (!result.output.startsWith('<response>')) {
+      return `<response>\n${result.output}\n</response>`;
+    }
 
-    return cleanOutput;
+    return result.output;
   }
 
   /**
