@@ -293,7 +293,7 @@ export class ClaudeCodeService extends Service {
 
   /**
    * Research method (used by ResearchService)
-   * Returns raw output for custom parsing
+   * Returns output with XML tags stripped (user-facing content)
    */
   async research(
     prompt: string,
@@ -305,7 +305,7 @@ export class ClaudeCodeService extends Service {
       timeout?: number;
     }
   ): Promise<ClaudeInvokeResult> {
-    return this.invoke({
+    const result = await this.invoke({
       prompt,
       model: options.model || 'sonnet',
       timeout: options.timeout || 600000, // 10 min default for research
@@ -313,5 +313,16 @@ export class ClaudeCodeService extends Service {
       allowedTools: options.allowedTools,
       disallowedTools: options.disallowedTools,
     });
+
+    // Strip XML wrapper tags from output (user-facing content)
+    if (result.output) {
+      result.output = result.output
+        .trim()
+        .replace(/^\s*<response[^>]*>\s*/i, '')
+        .replace(/\s*<\/response>\s*$/i, '')
+        .trim();
+    }
+
+    return result;
   }
 }
