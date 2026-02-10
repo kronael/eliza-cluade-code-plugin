@@ -15,7 +15,9 @@ import type {
 import { isAuthError } from './types';
 
 const DEFAULT_TIMEOUT = 120000; // 2 minutes
-const MAX_PROMPT_LENGTH = 50000;
+// Claude context is measured in tokens. We estimate tokens from chars.
+const DEFAULT_MAX_PROMPT_TOKENS = 200_000;
+const DEFAULT_TOKEN_CHAR_RATIO = 4; // ~4 chars per token heuristic
 const CREDENTIALS_PATH = join(homedir(), '.claude', '.credentials.json');
 
 /**
@@ -27,11 +29,15 @@ export class ClaudeCodeService extends Service {
   capabilityDescription = 'Invoke Claude Code CLI with auth handling';
 
   private defaultTimeout: number;
+  private maxPromptTokens: number;
+  private tokenCharRatio: number;
   private authErrorEmitted = false;
 
   constructor(runtime?: IAgentRuntime) {
     super(runtime);
     this.defaultTimeout = DEFAULT_TIMEOUT;
+    this.maxPromptTokens = DEFAULT_MAX_PROMPT_TOKENS;
+    this.tokenCharRatio = DEFAULT_TOKEN_CHAR_RATIO;
   }
 
   static async start(runtime: IAgentRuntime): Promise<Service> {
@@ -42,6 +48,12 @@ export class ClaudeCodeService extends Service {
 
     if (ccSettings?.timeout && typeof ccSettings.timeout === 'number') {
       service.defaultTimeout = ccSettings.timeout;
+    }
+    if (ccSettings?.maxPromptTokens && typeof ccSettings.maxPromptTokens === 'number') {
+      service.maxPromptTokens = ccSettings.maxPromptTokens;
+    }
+    if (ccSettings?.tokenCharRatio && typeof ccSettings.tokenCharRatio === 'number') {
+      service.tokenCharRatio = ccSettings.tokenCharRatio;
     }
 
     // Check auth status on startup
@@ -118,6 +130,23 @@ export class ClaudeCodeService extends Service {
   /**
    * Core invocation method for Claude Code CLI
    */
+  private truncatePrompt(prompt: string): string {
+    if (!prompt) return prompt;
+    const maxChars = Math.max(1, Math.floor(this.maxPromptTokens * this.tokenCharRatio));
+    if (prompt.length <= maxChars) return prompt;
+
+    // Preserve start + end to keep system instructions and recent context.
+    const headChars = Math.floor(maxChars * 0.6);
+    const tailChars = maxChars - headChars;
+    const head = prompt.slice(0, headChars);
+    const tail = prompt.slice(-tailChars);
+    return `${head}
+
+[...TRUNCATED...]
+
+${tail}`;
+  }
+
   async invoke(options: ClaudeInvokeOptions): Promise<ClaudeInvokeResult> {
     const {
       prompt,
@@ -134,7 +163,7 @@ export class ClaudeCodeService extends Service {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     try {
-      const truncated = prompt.slice(-MAX_PROMPT_LENGTH);
+      const truncated = this.truncatePrompt(prompt);
 
       // Build command args
       const args = ['claude', '-p', truncated, '--model', model];
