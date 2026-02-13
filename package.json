@@ -1,6 +1,6 @@
 {
   "name": "eliza-plugin-claude-code",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Use Claude Code CLI as a model provider in ElizaOS agents",
   "author": "Ondrej Vostal <ondrej@vostal.net>",
   "license": "MIT",
