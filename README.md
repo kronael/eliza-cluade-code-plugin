@@ -26,13 +26,19 @@ Add to character file:
     "claudeCode": {
       "largeModel": "sonnet",
       "smallModel": "haiku",
-      "timeout": 120000
+      "timeout": 120000,
+      "maxPromptTokens": 200000,
+      "tokenCharRatio": 4
     }
   }
 }
 ```
 
 Models: `sonnet` (default), `opus`, `haiku`
+
+`maxPromptTokens` limits prompt size by token estimate (converted with
+`tokenCharRatio`) before invoking Claude Code. Truncation preserves both the
+start and end of the prompt.
 
 ## Authentication
 
