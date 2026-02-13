@@ -1,7 +1,8 @@
 # eliza-plugin-claude-code
 
-Claude Code CLI as a model provider for ElizaOS. Spawns isolated CLI processes
-with OAuth auth handling, timeout management, and temp workspace cleanup.
+Claude Code CLI as a model provider for ElizaOS. Spawns isolated CLI
+processes with OAuth auth handling, timeout management, and temp workspace
+cleanup.
 
 ## Installation
 
@@ -34,17 +35,25 @@ Add to character file:
 }
 ```
 
-Models: `sonnet` (default), `opus`, `haiku`
+Models: `sonnet` (default for large), `haiku` (default for small), `opus`
 
-`maxPromptTokens` limits prompt size by token estimate (converted with
-`tokenCharRatio`) before invoking Claude Code. Truncation preserves both the
-start and end of the prompt.
+`maxPromptTokens` limits prompt size by token estimate (converted via
+`tokenCharRatio`, default ~4 chars/token). Truncation preserves both
+start (60%) and end (40%) of the prompt.
+
+## Running
+
+```bash
+bun run build      # Build to ./dist
+bun run dev        # Watch mode
+bun test           # Run tests
+```
 
 ## Authentication
 
-Reads OAuth credentials from `~/.claude/.credentials.json`. On startup, service
-logs auth status and token expiry. Auth errors (expired token, unauthorized) are
-detected in CLI stderr and logged once per service lifetime.
+Reads OAuth credentials from `~/.claude/.credentials.json`. On startup,
+service logs auth status and token expiry. Auth errors detected in CLI
+stderr, logged once per service lifetime.
 
 If auth fails: `claude login`
 
@@ -53,17 +62,7 @@ If auth fails: `claude login`
 Other plugins can use the service directly:
 
 ```typescript
-import type { ClaudeCodeService } from 'eliza-plugin-claude-code';
-
 const service = runtime.getService<ClaudeCodeService>('claude_code');
-```
-
-### generateText(prompt, model?)
-
-Returns text wrapped in `<response>` tags. Throws on error or empty output.
-
-```typescript
-const text = await service.generateText('Explain monads', 'sonnet');
 ```
 
 ### invoke(options)
@@ -79,13 +78,22 @@ const result = await service.invoke({
   allowedTools: ['Read', 'Glob', 'Grep'],
   disallowedTools: ['Edit', 'Write'],
 });
-
 // result: { output, exitCode, stderr, duration }
+```
+
+### generateText(prompt, model?)
+
+Returns text wrapped in `<response>` tags. Throws on error or empty
+output.
+
+```typescript
+const text = await service.generateText('Explain monads', 'sonnet');
 ```
 
 ### research(prompt, options)
 
-For codebase research with longer timeout (10min default).
+Codebase research with longer timeout (10min default). Strips
+`<response>` XML wrapper from output.
 
 ```typescript
 const result = await service.research('Find all API endpoints', {
